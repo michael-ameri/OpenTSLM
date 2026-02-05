@@ -76,7 +76,7 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
         # convert LM to FlamingoLM
         extend_instance(lang_encoder, FlamingoLMMixin)
 
-        def _infer_decoder_layers_attr_name(model):
+        def _infer_decoder_layers_attr_name(lm_model):
             __KNOWN_DECODER_LAYERS_ATTR_NAMES = {
                 "opt": "model.decoder.layers",
                 "gptj": "transformer.h",
@@ -93,7 +93,7 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
             }
 
             # Special handling for Gemma3 models with different architectures
-            model_class_name = model.__class__.__name__
+            model_class_name = lm_model.__class__.__name__
             if "gemma3" in model_class_name.lower():
                 if "ConditionalGeneration" in model_class_name:
                     # Gemma3ForConditionalGeneration (multimodal 4B model) - layers are at language_model.layers
@@ -104,7 +104,7 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
 
             # Original logic for non-Gemma3 models
             for k in __KNOWN_DECODER_LAYERS_ATTR_NAMES:
-                if k.lower() in model.__class__.__name__.lower():
+                if k.lower() in lm_model.__class__.__name__.lower():
                     return __KNOWN_DECODER_LAYERS_ATTR_NAMES[k]
 
             raise ValueError(
@@ -124,7 +124,7 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
                     lang_encoder.config.text_config.hidden_size
                 )
 
-        model = TimeSeriesFlamingoWithTrainableEncoder(
+        flamingo_model = TimeSeriesFlamingoWithTrainableEncoder(
             SimpleNamespace(visual=time_series_encoder),
             lang_encoder,
             text_tokenizer.encode("<|endofchunk|>")[-1],
@@ -135,21 +135,21 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
         )
 
         # Freeze all parameters
-        model.requires_grad_(False)
-        assert sum(p.numel() for p in model.parameters() if p.requires_grad) == 0
+        flamingo_model.requires_grad_(False)
+        assert sum(p.numel() for p in flamingo_model.parameters() if p.requires_grad) == 0
 
         # Unfreeze perceiver, gated_cross_attn_layers, and LM input embeddings
-        model.perceiver.requires_grad_(True)
-        model.lang_encoder.gated_cross_attn_layers.requires_grad_(True)
+        flamingo_model.perceiver.requires_grad_(True)
+        flamingo_model.lang_encoder.gated_cross_attn_layers.requires_grad_(True)
         if not freeze_lm_embeddings:
-            model.lang_encoder.get_input_embeddings().requires_grad_(True)
+            flamingo_model.lang_encoder.get_input_embeddings().requires_grad_(True)
             # TODO: investigate also training the output embeddings when untied
 
         # additonally unfreeze encoder
-        model.vision_encoder.requires_grad_(True)
+        flamingo_model.vision_encoder.requires_grad_(True)
 
-        self.model = model
-        self.llm = model
+        self.model = flamingo_model
+        self.llm = flamingo_model
         self.text_tokenizer = text_tokenizer
 
     def pad_and_apply_batch(
