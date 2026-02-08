@@ -63,6 +63,8 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
             cache_dir=None,
             device_map={"": device},
             attn_implementation="eager",
+            # todo mike: to run training on cpu
+            torch_dtype=torch.float32,
         )
 
         # add Flamingo special tokens to the tokenizer
@@ -117,7 +119,7 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
 
         # Fix compatibility for Gemma3Config which has hidden_size in text_config
         if hasattr(lang_encoder.config, "text_config") and hasattr(
-            lang_encoder.config.text_config, "hidden_size"
+                lang_encoder.config.text_config, "hidden_size"
         ):
             if not hasattr(lang_encoder.config, "hidden_size"):
                 lang_encoder.config.hidden_size = (
@@ -125,7 +127,9 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
                 )
 
         model = TimeSeriesFlamingoWithTrainableEncoder(
-            SimpleNamespace(visual=time_series_encoder),
+            # todo mike: doesn't work with fraud train FraudDetectionDataset
+            #SimpleNamespace(visual=time_series_encoder),
+            time_series_encoder,
             lang_encoder,
             text_tokenizer.encode("<|endofchunk|>")[-1],
             text_tokenizer.encode("<image>")[-1],
@@ -261,8 +265,9 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
                     lang_x=input_ids,
                     attention_mask=attention_mask,
                     max_new_tokens=max_new_tokens,
-                    eos_token_id=self.text_tokenizer.eos_token_id,
-                    pad_token_id=self.text_tokenizer.pad_token_id,
+                    # TODO mike: causes exception when running locally
+                    #eos_token_id=self.text_tokenizer.eos_token_id,
+                    #pad_token_id=self.text_tokenizer.pad_token_id,
                     **generate_kwargs,
                 )
 

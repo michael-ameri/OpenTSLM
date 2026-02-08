@@ -7,6 +7,7 @@ from torch.optim import AdamW
 from transformers import get_linear_schedule_with_warmup
 from tqdm import tqdm
 import sys
+import traceback
 
 # Add src to path
 sys.path.append(os.path.abspath("src"))
@@ -32,6 +33,7 @@ def train(args):
         ).to(device)
     except Exception as e:
         print(f"Error loading model: {e}")
+        traceback.print_exc()
         print("Make sure you have access to the model on HuggingFace and have logged in via `hf auth login`.")
         return
 
