@@ -125,7 +125,7 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
                 )
 
         model = TimeSeriesFlamingoWithTrainableEncoder(
-            SimpleNamespace(visual=time_series_encoder),
+            time_series_encoder,
             lang_encoder,
             text_tokenizer.encode("<|endofchunk|>")[-1],
             text_tokenizer.encode("<image>")[-1],
@@ -151,6 +151,12 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
         self.model = model
         self.llm = model
         self.text_tokenizer = text_tokenizer
+
+        # todo mike: run locally
+        # Ensure all parameters share the same dtype (Gemma3 loads as bfloat16,
+        # but Flamingo cross-attention layers are initialized as float32).
+        target_dtype = next(model.lang_encoder.parameters()).dtype
+        self.model.to(dtype=target_dtype)
 
     def pad_and_apply_batch(
         self, batch: List[Dict[str, any]], include_labels: bool
@@ -183,7 +189,8 @@ class OpenTSLMFlamingo(TimeSeriesLLM):
 
             return torch.stack(padded_series)
 
-        cast_dtype = None
+        # todo mike: run locally
+        cast_dtype = next(self.model.parameters()).dtype
         tokenizer = self.text_tokenizer
         media_token_id = tokenizer("<image>", add_special_tokens=False)["input_ids"][-1]
         endofchunk_token_id = tokenizer("<|endofchunk|>", add_special_tokens=False)[
