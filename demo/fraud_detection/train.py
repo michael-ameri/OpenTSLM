@@ -38,6 +38,8 @@ def train(args):
             llm_id=args.llm_id,
             device=DEVICE
         ).to(DEVICE)
+        # todo mike: run locally
+        model = model.float()
     except Exception as e:
         print(f"Failed to load model {args.llm_id}: {e}")
         print("Ensure you have access to the model or use a different --llm_id.")

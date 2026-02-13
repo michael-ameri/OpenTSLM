@@ -13,7 +13,7 @@ class FraudDataset(QADataset):
     Dataset for Fraud Detection in Mobile Carrier Time Series.
     """
 
-    DATA_DIR = "demo/fraud_detection/data"
+    DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
     def _load_splits(self) -> Tuple[Dataset, Dataset, Dataset]:
         """
